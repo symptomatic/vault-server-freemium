@@ -1,6 +1,6 @@
 Package.describe({
     name: 'symptomatic:vault-server',
-    version: '6.2.2',
+    version: '6.2.4',
     summary: 'Add oauth2 server support to your Meteor on FHIR application.',
     git: 'https://github.com/clinical-meteor/fhir-vault-server'
 });
@@ -13,8 +13,6 @@ Package.onUse(function(api) {
     api.use('webapp', 'server');
     api.use('ecmascript@0.13.0');
     api.use('check', 'server');
-
-    // OAuth2 Server
     api.use('meteorhacks:async@1.0.0', 'server');
 
     // database drivers, data cursors
@@ -31,12 +29,10 @@ Package.onUse(function(api) {
     // REST Endpoints
     api.addFiles('FhirServer/Core.js', 'server');
     api.addFiles('FhirServer/Metadata.js', 'server');    
-
-    api.export('oAuth2Server', ['client', 'server']);
 });
 
 Npm.depends({
     "faker": "5.1.0",
     "express": "4.13.4",
-    "body-parser": "1.14.2"
+    "body-parser": "1.14.2",
 });
