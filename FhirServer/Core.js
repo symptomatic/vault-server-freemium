@@ -25,6 +25,7 @@ import {
   FhirUtilities,
   Questionnaires,
   QuestionnaireResponses,
+  Tasks,
   ValueSets
 } from 'meteor/clinical:hl7-fhir-data-infrastructure';
 
@@ -57,6 +58,7 @@ if(Meteor.isServer){
   Collections.Procedures = Procedures;
   Collections.Questionnaires = Questionnaires;
   Collections.QuestionnaireResponses = QuestionnaireResponses;
+  Collections.Tasks = Tasks;
   Collections.ValueSets = ValueSets;
 }
 
