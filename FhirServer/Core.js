@@ -1,7 +1,7 @@
 
 import RestHelpers from './RestHelpers';
 
-import { get, has } from 'lodash';
+import { get, has, set, unset, cloneDeep } from 'lodash';
 import moment from 'moment';
 import { Meteor } from 'meteor/meteor';
 import { Random } from 'meteor/random';
@@ -484,7 +484,7 @@ if(typeof serverRouteManifest === "object"){
         if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
     
           if (req.body) {
-            let newRecord = req.body;
+            let newRecord = cloneDeep(req.body);
     
             process.env.TRACE && console.log('req.body', req.body);
     
@@ -498,51 +498,101 @@ if(typeof serverRouteManifest === "object"){
             process.env.DEBUG && console.log('-----------------------------------------------------------');
             process.env.DEBUG && console.log('newRecord', JSON.stringify(newRecord, null, 2));            
     
-            let recordsToUpdate= Collections[collectionName].findOne(req.params.id);
+
+
+            let recordsToUpdate= Collections[collectionName].find(req.params.id).count();
             let newlyAssignedId;
     
-            if(recordsToUpdate){
-              process.env.DEBUG && console.log(routeResourceType + ' found...')
+            if(recordsToUpdate > 0){
+              process.env.DEBUG && console.log(recordsToUpdate + ' records found...')
 
-              
-              newlyAssignedId = Collections[collectionName].update({_id: req.params.id}, {$set: newRecord },  schemaValidationConfig, function(error, result){
-                if (error) {
-                  process.env.TRACE && console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error);
-    
-                  // Bad Request
-                  JsonRoutes.sendResult(res, {
-                    code: 400,
-                    data: error.message
-                  });
-                }
-                if (result) {
-                  process.env.TRACE && console.log('result', result);
-                  res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
-                  res.setHeader("Last-Modified", new Date());
-                  res.setHeader("ETag", fhirVersion);
-    
-                  let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
-                  let payload = [];
-    
-                  recordsToUpdate.forEach(function(record){
-                    payload.push({
-                      fullUrl: Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.fhirPath', 'fhir-3.0.0/') + get(record, 'resourceType') + "/" + get(record, '_id'),
-                      resource: RestHelpers.prepForFhirTransfer(record)
+
+              if(get(Meteor, 'settings.private.recordVersioningEnabled')){
+                process.env.DEBUG && console.log('Versioned Collection: Trying to add another versioned record to the main Task collection.')
+
+                set(newRecord, 'meta.versionId', recordsToUpdate + 1)
+                unset(newRecord, '_id')
+  
+                newlyAssignedId = Collections[collectionName].insert(newRecord, schemaValidationConfig, function(error, result){
+                  if (error) {
+                    process.env.TRACE && console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error);
+      
+                    // Bad Request
+                    JsonRoutes.sendResult(res, {
+                      code: 400,
+                      data: error.message
                     });
-                  });
-    
-                  process.env.TRACE && console.log("payload", payload);
-    
-                  // success!
-                  JsonRoutes.sendResult(res, {
-                    code: 200,
-                    data: Bundle.generate(payload)
-                  });
-                }
-              });
+                  }
+                  if (result) {
+                    process.env.TRACE && console.log('result', result);
+                    res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
+                    res.setHeader("Last-Modified", new Date());
+                    res.setHeader("ETag", fhirVersion);
+      
+                    let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
+                    let payload = [];
+      
+                    recordsToUpdate.forEach(function(record){
+                      payload.push(RestHelpers.prepForFhirTransfer(record));
+                    });
+      
+                    process.env.TRACE && console.log("payload", payload);
+      
+                    // success!
+                    JsonRoutes.sendResult(res, {
+                      code: 200,
+                      data: Bundle.generate(payload)
+                    });
+                  }
+                });    
+              } else {
+                process.env.DEBUG && console.log('Nonversioned Collection: Trying to update the existing record.')
+                newlyAssignedId = Collections[collectionName].update({_id: req.params.id}, {$set: newRecord },  schemaValidationConfig, function(error, result){
+                  if (error) {
+                    process.env.TRACE && console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error);
+      
+                    // Bad Request
+                    JsonRoutes.sendResult(res, {
+                      code: 400,
+                      data: error.message
+                    });
+                  }
+                  if (result) {
+                    process.env.TRACE && console.log('result', result);
+                    res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
+                    res.setHeader("Last-Modified", new Date());
+                    res.setHeader("ETag", fhirVersion);
+      
+                    let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
+                    let payload = [];
+      
+                    recordsToUpdate.forEach(function(record){
+                      payload.push({
+                        fullUrl: Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.fhirPath', 'fhir-3.0.0/') + get(record, 'resourceType') + "/" + get(record, '_id'),
+                        resource: RestHelpers.prepForFhirTransfer(record)
+                      });
+                    });
+      
+                    process.env.TRACE && console.log("payload", payload);
+      
+                    // success!
+                    JsonRoutes.sendResult(res, {
+                      code: 200,
+                      data: Bundle.generate(payload)
+                    });
+                  }
+                });
+              }
+              
+              
             } else {        
               process.env.DEBUG && console.log('No recordsToUpdate found.  Creating one.');
-              newRecord._id = req.params.id;
+
+              //newRecord._id = req.params.id;
+              if(get(Meteor, 'settings.private.recordVersioningEnabled')){
+                set(newRecord, 'meta.versionId', 1)
+              }
+
               newlyAssignedId = Collections[collectionName].insert(newRecord, schemaValidationConfig, function(error, result){
                 if (error) {
                   process.env.TRACE && console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error);
@@ -576,6 +626,10 @@ if(typeof serverRouteManifest === "object"){
                 }
               });        
             }
+
+
+
+
           } else {
             // no body; Unprocessable Entity
             JsonRoutes.sendResult(res, {
