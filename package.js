@@ -1,6 +1,6 @@
 Package.describe({
     name: 'symptomatic:vault-server-freemium',
-    version: '6.2.7',
+    version: '6.3.0',
     summary: 'Add oauth2 server support to your Meteor on FHIR application.',
     git: 'https://github.com/clinical-meteor/fhir-vault-server'
 });
