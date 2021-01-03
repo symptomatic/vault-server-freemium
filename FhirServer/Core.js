@@ -11,8 +11,13 @@ import {
   AuditEvents,
   Bundles,
   CarePlans,
+  Communications,
+  CommunicationRequests,
+  Compositions,
   Conditions,
   Devices,
+  DiagnosticReports,
+  DocumentReferences,
   Immunizations,
   Measures,
   MeasureReports,
@@ -22,6 +27,7 @@ import {
   Patients,
   Practitioners,
   Procedures,
+  Provenances,
   FhirUtilities,
   Questionnaires,
   QuestionnaireResponses,
@@ -45,8 +51,13 @@ if(Meteor.isServer){
   Collections.AuditEvents = AuditEvents;
   Collections.Bundles = Bundles;
   Collections.CarePlans = CarePlans;
+  Collections.Communications = Communications;
+  Collections.CommunicationRequests = CommunicationRequests;
+  Collections.Compositions = Compositions;
   Collections.Conditions = Conditions;
   Collections.Devices = Devices;
+  Collections.DiagnosticReports = DiagnosticReports;
+  Collections.DocumentReferences = DocumentReferences;
   Collections.Immunizations = Immunizations;
   Collections.Locations = Locations;
   Collections.Observations = Observations;
@@ -55,6 +66,7 @@ if(Meteor.isServer){
   Collections.MeasureReports = MeasureReports;
   Collections.Patients = Patients;
   Collections.Practitioners = Practitioners;
+  Collections.Provenances = Provenances;
   Collections.Procedures = Procedures;
   Collections.Questionnaires = Questionnaires;
   Collections.QuestionnaireResponses = QuestionnaireResponses;
