@@ -293,9 +293,32 @@ if(typeof serverRouteManifest === "object"){
   
           if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
             process.env.DEBUG && console.log('Security checks completed');
-            let record = Collections[collectionName].findOne({id: req.params.id});
-            
-            if (record) {
+
+            let record;
+
+            console.log('req.query', req.query)
+            console.log('req.params', req.params)
+
+            if (req.query.hasOwnProperty('_history')) {
+              console.log('Found a _history')
+              let records = Collections[collectionName].find({id: req.params.id});
+              process.env.TRACE && console.log('records', records);
+
+              payload = [];
+              records.forEach(function(recordVersion){
+                payload.push(RestHelpers.prepForFhirTransfer(recordVersion));
+              });  
+  
+              // Success
+              JsonRoutes.sendResult(res, {
+                code: 200,
+                data: Bundle.generate(payload)
+              });
+            } else {
+              record = Collections[collectionName].findOne({id: req.params.id});
+              process.env.TRACE && console.log('record', record);
+
+              // plain ol regular approach
               process.env.TRACE && console.log('record', record);
   
               // Success
@@ -303,6 +326,11 @@ if(typeof serverRouteManifest === "object"){
                 code: 200,
                 data: RestHelpers.prepForFhirTransfer(record)
               });
+            }
+
+            
+            if (record) {
+              
             } else {
               // Gone
               JsonRoutes.sendResult(res, {
@@ -777,18 +805,9 @@ if(typeof serverRouteManifest === "object"){
         });
 
         JsonRoutes.add("get", "/" + fhirPath + "/" + routeResourceType + ":param", function (req, res, next) {
+          process.env.DEBUG && console.log('-----------------------------------------------------------------------------');
           process.env.DEBUG && console.log('GET /' + fhirPath + '/' + routeResourceType + '?' + JSON.stringify(req.query));
           process.env.DEBUG && console.log('params', req.params);
-
-          // res.setHeader("Access-Control-Allow-Origin", "*");
-          // res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
-          // res.setHeader("content-type", "application/fhir+json");
-
-          // res.setHeader('Access-Control-Allow-Origin', Meteor.absoluteUrl());
-
-          // res.setHeader("Access-Control-Allow-Credentials", "true");
-          // res.setHeader("Access-Control-Max-Age", "1800");
-          // res.setHeader("Access-Control-Allow-Methods","PUT, POST, GET, DELETE, PATCH, OPTIONS");
 
           let isAuthorized = false;
           let accessTokenStr = (req.params && req.params.access_token) || (req.query && req.query.access_token);
