@@ -16,12 +16,8 @@ import {
   Compositions,
   Conditions,
   Devices,
-<<<<<<< HEAD
-  Goals,
-=======
   DiagnosticReports,
   DocumentReferences,
->>>>>>> 1ace12defc721e8a4189493b315cd4ecce9a5eba
   Immunizations,
   Locations,
   Medications,
@@ -62,12 +58,8 @@ if(Meteor.isServer){
   Collections.Compositions = Compositions;
   Collections.Conditions = Conditions;
   Collections.Devices = Devices;
-<<<<<<< HEAD
-  Collections.Goals = Goals;
-=======
   Collections.DiagnosticReports = DiagnosticReports;
   Collections.DocumentReferences = DocumentReferences;
->>>>>>> 1ace12defc721e8a4189493b315cd4ecce9a5eba
   Collections.Immunizations = Immunizations;
   Collections.Locations = Locations;
   Collections.Observations = Observations;
