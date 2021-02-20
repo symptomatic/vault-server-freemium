@@ -80,6 +80,10 @@ Meteor.startup(function(){
     BrowserPolicy.content.allowConnectOrigin('ws://localhost:3000');
     BrowserPolicy.content.allowConnectOrigin('wss://localhost:3000');
 
+    BrowserPolicy.content.allowConnectOrigin('http://localhost:12072');
+    BrowserPolicy.content.allowConnectOrigin('ws://localhost:12072');
+    BrowserPolicy.content.allowConnectOrigin('wss://localhost:12072');
+
     BrowserPolicy.content.allowOriginForAll("http://meteor.local");
 
     BrowserPolicy.content.allowOriginForAll(get(Meteor, 'settings.public.interfaces.symptomaticFhirServer.channel.endpoint'));

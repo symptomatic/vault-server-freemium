@@ -13,10 +13,13 @@ import {
   CarePlans,
   Conditions,
   Devices,
+  Goals,
   Immunizations,
+  Locations,
+  Medications,
+  MedicationOrders,
   Measures,
   MeasureReports,
-  Locations,
   Observations,
   Organizations,
   Patients,
@@ -47,10 +50,13 @@ if(Meteor.isServer){
   Collections.CarePlans = CarePlans;
   Collections.Conditions = Conditions;
   Collections.Devices = Devices;
+  Collections.Goals = Goals;
   Collections.Immunizations = Immunizations;
   Collections.Locations = Locations;
   Collections.Observations = Observations;
   Collections.Organizations = Organizations;
+  Collections.Medications = Medications;
+  Collections.MedicationOrders = MedicationOrders;
   Collections.Measures = Measures;
   Collections.MeasureReports = MeasureReports;
   Collections.Patients = Patients;
