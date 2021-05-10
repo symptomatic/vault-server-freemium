@@ -11,14 +11,18 @@ import {
   AuditEvents,
   Bundles,
   CarePlans,
+  CareTeams,
   Communications,
   CommunicationRequests,
   Compositions,
   Conditions,
+  Consents,
   Devices,
   DiagnosticReports,
   DocumentReferences,
+  Goals,
   Immunizations,
+  Lists,
   Locations,
   Medications,
   MedicationOrders,
@@ -53,14 +57,18 @@ if(Meteor.isServer){
   Collections.AuditEvents = AuditEvents;
   Collections.Bundles = Bundles;
   Collections.CarePlans = CarePlans;
+  Collections.CareTeams = CareTeams;
   Collections.Communications = Communications;
   Collections.CommunicationRequests = CommunicationRequests;
   Collections.Compositions = Compositions;
   Collections.Conditions = Conditions;
+  Collections.Consents = Consents;
   Collections.Devices = Devices;
   Collections.DiagnosticReports = DiagnosticReports;
   Collections.DocumentReferences = DocumentReferences;
+  Collections.Goals = Goals;
   Collections.Immunizations = Immunizations;
+  Collections.Lists = Lists;
   Collections.Locations = Locations;
   Collections.Observations = Observations;
   Collections.Organizations = Organizations;
