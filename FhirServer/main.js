@@ -86,6 +86,9 @@ Meteor.startup(function(){
 
     BrowserPolicy.content.allowOriginForAll("http://meteor.local");
 
+    BrowserPolicy.content.allowOriginForAll("https://fhir.epic.com");
+    BrowserPolicy.content.allowOriginForAll("https://fhir-ehr-code.cerner.com");
+
     BrowserPolicy.content.allowOriginForAll(get(Meteor, 'settings.public.interfaces.symptomaticFhirServer.channel.endpoint'));
 
     // BrowserPolicy.content.allowOriginForAll('fhir-timeline.meteorapp.com');

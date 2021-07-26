@@ -34,11 +34,13 @@ import {
   Practitioners,
   Procedures,
   Provenances,
-  FhirUtilities,
   Questionnaires,
   QuestionnaireResponses,
+  RiskAssessments,
+  ServiceRequests,
   Tasks,
-  ValueSets
+  ValueSets,
+  FhirUtilities
 } from 'meteor/clinical:hl7-fhir-data-infrastructure';
 
 
@@ -82,6 +84,8 @@ if(Meteor.isServer){
   Collections.Procedures = Procedures;
   Collections.Questionnaires = Questionnaires;
   Collections.QuestionnaireResponses = QuestionnaireResponses;
+  Collections.RiskAssessments = RiskAssessments;
+  Collections.ServiceRequests = ServiceRequests;
   Collections.Tasks = Tasks;
   Collections.ValueSets = ValueSets;
 }
@@ -363,7 +367,7 @@ if(typeof serverRouteManifest === "object"){
       if(serverRouteManifest[routeResourceType].interactions.includes('create')){
         JsonRoutes.add("post", "/" + fhirPath + "/" + routeResourceType, function (req, res, next) {
           process.env.DEBUG && console.log('================================================================');
-          process.env.DEBUG && console.log('Post /' + fhirPath + '/' + routeResourceType);
+          process.env.DEBUG && console.log('POST /' + fhirPath + '/' + routeResourceType);
 
           // res.setHeader("Access-Control-Allow-Origin", "*");
           // res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
@@ -397,6 +401,7 @@ if(typeof serverRouteManifest === "object"){
           if (req.body) {
             newRecord = req.body;
             process.env.TRACE && console.log('req.body', req.body);
+            
 
             let newlyAssignedId = Random.id();
 
@@ -524,16 +529,17 @@ if(typeof serverRouteManifest === "object"){
               newRecord.resourceType = routeResourceType;
               newRecord = RestHelpers.toMongo(newRecord);
       
-              process.env.TRACE && console.log('newRecord', newRecord);
       
               newRecord = RestHelpers.prepForUpdate(newRecord);
       
               process.env.DEBUG && console.log('-----------------------------------------------------------');
-              process.env.DEBUG && console.log('newRecord', JSON.stringify(newRecord, null, 2));            
+              process.env.DEBUG && console.log('Core.put().newRecord', JSON.stringify(newRecord, null, 2));            
       
 
+              let recordsToUpdate = Collections[collectionName].find({id: req.params.id}).count();
 
-              let recordsToUpdate= Collections[collectionName].find(req.params.id).count();
+              process.env.DEBUG && console.log('Core.put().recordsToUpdate', JSON.stringify(recordsToUpdate, null, 2));            
+              
               let newlyAssignedId;
       
               if(recordsToUpdate > 0){
@@ -580,7 +586,7 @@ if(typeof serverRouteManifest === "object"){
                   });    
                 } else {
                   process.env.DEBUG && console.log('Nonversioned Collection: Trying to update the existing record.')
-                  newlyAssignedId = Collections[collectionName].update({_id: req.params.id}, {$set: newRecord },  schemaValidationConfig, function(error, result){
+                  newlyAssignedId = Collections[collectionName].update({id: req.params.id}, {$set: newRecord },  schemaValidationConfig, function(error, result){
                     if (error) {
                       process.env.TRACE && console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error);
         
@@ -626,43 +632,77 @@ if(typeof serverRouteManifest === "object"){
                   set(newRecord, 'meta.versionId', 1)
                 }
 
-                newlyAssignedId = Collections[collectionName].insert(newRecord, schemaValidationConfig, function(error, result){
-                  if (error) {
-                    process.env.TRACE && console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error);
-      
-                    // Bad Request
-                    JsonRoutes.sendResult(res, {
-                      code: 400,
-                      data: error.message
-                    });
-                  }
-                  if (result) {
-                    process.env.TRACE && console.log('result', result);
-                    res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
-                    res.setHeader("Last-Modified", new Date());
-                    res.setHeader("ETag", fhirVersion);
-      
-                    let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
-                    let payload = [];
-      
-                    recordsToUpdate.forEach(function(record){
-                      payload.push(RestHelpers.prepForFhirTransfer(record));
-                    });
-      
-                    process.env.TRACE && console.log("payload", payload);
-      
-                    // success!
-                    JsonRoutes.sendResult(res, {
-                      code: 200,
-                      data: Bundle.generate(payload)
-                    });
-                  }
-                });        
+                process.env.DEBUG && console.log('Core.put().Collections.findOne()', Collections[collectionName].findOne({_id: newRecord._id}));            
+
+                if(!Collections[collectionName].findOne({_id: newRecord._id})){
+                  newlyAssignedId = Collections[collectionName].insert(newRecord, schemaValidationConfig, function(error, result){
+                    if (error) {
+                      process.env.TRACE && console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error);
+        
+                      // Bad Request
+                      JsonRoutes.sendResult(res, {
+                        code: 400,
+                        data: error.message
+                      });
+                    }
+                    if (result) {
+                      process.env.TRACE && console.log('result', result);
+                      res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
+                      res.setHeader("Last-Modified", new Date());
+                      res.setHeader("ETag", fhirVersion);
+        
+                      let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
+                      let payload = [];
+        
+                      recordsToUpdate.forEach(function(record){
+                        payload.push(RestHelpers.prepForFhirTransfer(record));
+                      });
+        
+                      process.env.TRACE && console.log("payload", payload);
+        
+                      // success!
+                      JsonRoutes.sendResult(res, {
+                        code: 200,
+                        data: Bundle.generate(payload)
+                      });
+                    }
+                  });    
+                } else {
+                  
+                  Collections[collectionName].update({_id: newRecord._id}, {$set: newRecord}, schemaValidationConfig, function(error, result){
+                    if (error) {
+                      process.env.TRACE && console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error);
+        
+                      // Bad Request
+                      JsonRoutes.sendResult(res, {
+                        code: 400,
+                        data: error.message
+                      });
+                    }
+                    if (result) {
+                      process.env.TRACE && console.log('result', result);
+                      res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
+                      res.setHeader("Last-Modified", new Date());
+                      res.setHeader("ETag", fhirVersion);
+        
+                      let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
+                      let payload = [];
+        
+                      recordsToUpdate.forEach(function(record){
+                        payload.push(RestHelpers.prepForFhirTransfer(record));
+                      });
+        
+                      process.env.TRACE && console.log("payload", payload);
+        
+                      // success!
+                      JsonRoutes.sendResult(res, {
+                        code: 200,
+                        data: Bundle.generate(payload)
+                      });
+                    }
+                  });    
+                }                    
               }
-
-
-
-
             } else {
               // no body; Unprocessable Entity
               JsonRoutes.sendResult(res, {
