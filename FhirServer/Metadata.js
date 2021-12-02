@@ -43,13 +43,17 @@ const Server = {
       ],
       "rest": [{
           "mode": "server",
-          "security": {
-            "service": [],
-            "extension": []
-          },
           "resource": []
       }]
     };
+
+    let oAuthServerRunning = false;
+    if(oAuthServerRunning){
+      CapabilityStatement.security = {
+        "service": [],
+      };
+    }
+
 
     if(get(Meteor, 'settings.private.fhir.disableOauth') !== true){
       CapabilityStatement.rest[0].security.service.push({

@@ -1,5 +1,6 @@
 
 import RestHelpers from './RestHelpers';
+import MedicalRecordImporter from './MedicalRecordImporter';
 
 import { get, has, set, unset, cloneDeep } from 'lodash';
 import moment from 'moment';
@@ -206,24 +207,16 @@ JsonRoutes.add("post", fhirPath + "/ping", function (req, res, next) {
 // Route Manifest  
 
 // If no settings file is provided, we will default to a Public Health Server with no PHI
-let serverRouteManifest = {
-  "MeasureReport": {
-    "interactions": ["read", "create", "update", "delete"]
-  },
-  "Measure": {
-    "interactions": ["read", "create", "update", "delete"]
-  },
-  "Location": {
-    "interactions": ["read", "create", "update", "delete"]
-  },
-  "Organization": {
-    "interactions": ["read", "create", "update", "delete"]
-  }
-}
+let serverRouteManifest = {};
 
 // Checking for a settings file
-if(has(Meteor, 'settings.private.fhir.rest')){
-  serverRouteManifest = get(Meteor, 'settings.private.fhir.rest');
+if(get(Meteor, 'settings.private.fhir.rest')){
+  serverRouteManifest = Object.assign(serverRouteManifest,get(Meteor, 'settings.private.fhir.rest'));
+} else {
+  console.log('Meteor.settings.private.fhir.rest is not available.  No routes will be provided!  Ooops.  =(')
+}
+if(get(Meteor, 'settings.private.fhir.experimentalRest')){
+  serverRouteManifest = Object.assign(serverRouteManifest, get(Meteor, 'settings.private.fhir.experimentalRest'));
 }
 
 // checking if we're in strict validation mode, or if we're promiscuous  
@@ -358,24 +351,18 @@ if(typeof serverRouteManifest === "object"){
               record = Collections[collectionName].findOne({id: req.params.id});
               if(get(Meteor, 'settings.private.trace') === true) { console.log('record', record); }
 
-              // plain ol regular approach
-              if(get(Meteor, 'settings.private.trace') === true) { console.log('record', record); }
-  
-              // Success
-              JsonRoutes.sendResult(res, {
-                code: 200,
-                data: RestHelpers.prepForFhirTransfer(record)
-              });
-            }
-
-            
-            if (record) {
-              
-            } else {
-              // Gone
-              JsonRoutes.sendResult(res, {
-                code: 410
-              });
+              if(record){
+                // Success
+                JsonRoutes.sendResult(res, {
+                  code: 200,
+                  data: RestHelpers.prepForFhirTransfer(record)
+                });
+              } else {
+                // Not Found
+                JsonRoutes.sendResult(res, {
+                  code: 404
+                });
+              }  
             }
           } else {
             // Unauthorized
@@ -446,14 +433,20 @@ if(typeof serverRouteManifest === "object"){
                   code: 415,
                   data: 'Wrong FHIR Resource.  Please check your endpoint.'
                 });
+              } else if(get(newRecord, 'resourceType') === "Bundle"){
+                MedicalRecordImporter.importBundle(newRecord);  
+                // success!
+                JsonRoutes.sendResult(res, {
+                  code: 201,
+                  data: Bundle.generate(payload)
+                });              
               } else {
                 newRecord.resourceType = routeResourceType;
                 newRecord._id = newlyAssignedId;
 
                 if(!get(newRecord, 'id')){
                   newRecord.id = newlyAssignedId;
-                }
-                
+                }                
   
                 newRecord = RestHelpers.toMongo(newRecord);
                 newRecord = RestHelpers.prepForUpdate(newRecord);
@@ -601,12 +594,24 @@ if(typeof serverRouteManifest === "object"){
                         });
           
                         if(get(Meteor, 'settings.private.trace') === true) { console.log("payload", payload); }
-          
-                        // success!
+
+
+                        // Created!
                         JsonRoutes.sendResult(res, {
-                          code: 200,
+                          code: 201,
                           data: Bundle.generate(payload)
                         });
+
+                        // My reading of the FHIR spec calls for a 200 response here
+                        // but Touchstone wants a 201 response.
+                        // If this is revisted and needs the original  200 response, then we may need to 
+                        // file an issue ticket with Touchstone to update their script
+            
+                        // // success!
+                        // JsonRoutes.sendResult(res, {
+                        //   code: 200,
+                        //   data: Bundle.generate(payload)
+                        // });
                       }
                     });    
                   } else {
@@ -782,10 +787,20 @@ if(typeof serverRouteManifest === "object"){
 
           if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
             if (Collections[collectionName].find({_id: req.params.id}).count() === 0) {
-              // Gone
+              // Not Found
               JsonRoutes.sendResult(res, {
-                code: 410
+                code: 404
               });
+
+              // My reading of the FHIR spec calls for a 410 response here
+              // but Touchstone wants a 404 response.
+              // If this is revisted and needs a 410, then we may need to 
+              // file an issue ticket with Touchstone to update their script
+
+              // // Gone
+              // JsonRoutes.sendResult(res, {
+              //   code: 410
+              // });
             } else {
               Collections[collectionName].remove({_id: req.params.id}, function(error, result){
                 if (result) {
