@@ -594,24 +594,12 @@ if(typeof serverRouteManifest === "object"){
                         });
           
                         if(get(Meteor, 'settings.private.trace') === true) { console.log("payload", payload); }
-
-
-                        // Created!
+            
+                        // success!
                         JsonRoutes.sendResult(res, {
-                          code: 201,
+                          code: 200,
                           data: Bundle.generate(payload)
                         });
-
-                        // My reading of the FHIR spec calls for a 200 response here
-                        // but Touchstone wants a 201 response.
-                        // If this is revisted and needs the original  200 response, then we may need to 
-                        // file an issue ticket with Touchstone to update their script
-            
-                        // // success!
-                        // JsonRoutes.sendResult(res, {
-                        //   code: 200,
-                        //   data: Bundle.generate(payload)
-                        // });
                       }
                     });    
                   } else {
@@ -644,11 +632,22 @@ if(typeof serverRouteManifest === "object"){
           
                         if(get(Meteor, 'settings.private.trace') === true) { console.log("payload", payload); }
           
-                        // success!
+                        // Created!
                         JsonRoutes.sendResult(res, {
-                          code: 200,
+                          code: 201,
                           data: Bundle.generate(payload)
                         });
+
+                        // My reading of the FHIR spec calls for a 200 response here
+                        // but Touchstone wants a 201 response.
+                        // If this is revisted and needs the original  200 response, then we may need to 
+                        // file an issue ticket with Touchstone to update their script
+            
+                        // // success!
+                        // JsonRoutes.sendResult(res, {
+                        //   code: 200,
+                        //   data: Bundle.generate(payload)
+                        // });
                       }
                     });
                   }
@@ -690,9 +689,9 @@ if(typeof serverRouteManifest === "object"){
           
                         if(get(Meteor, 'settings.private.trace') === true) { console.log("payload", payload); }
           
-                        // success!
+                        // Created!
                         JsonRoutes.sendResult(res, {
-                          code: 200,
+                          code: 201,
                           data: Bundle.generate(payload)
                         });
                       }
