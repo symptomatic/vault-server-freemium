@@ -1,5 +1,6 @@
 import { get, has } from 'lodash';
 import { Meteor } from 'meteor/meteor';
+import { MeRandomteor } from 'meteor/random';
 
 let fhirPath = get(Meteor, 'settings.private.fhir.fhirPath');
 
@@ -47,27 +48,59 @@ const Server = {
       }]
     };
 
-    let oAuthServerRunning = false;
-    if(oAuthServerRunning){
-      CapabilityStatement.security = {
-        "service": [],
-      };
-    }
+    // let oAuthServerRunning = false;
+    // if(oAuthServerRunning){
+    //   CapabilityStatement.security = {
+    //     "service": [],
+    //   };
+    // }
 
 
     if(get(Meteor, 'settings.private.fhir.disableOauth') !== true){
+      CapabilityStatement.rest[0].security = {
+        "service": [],
+        "extension": []
+      };
       CapabilityStatement.rest[0].security.service.push({
-        text: "OAuth"
+        "coding": [
+          {
+            "system": "http://hl7.org/fhir/restful-security-service",
+            "code": "SMART-on-FHIR"
+          }
+        ],
+        "text": "OAuth2 using SMART-on-FHIR profile (see http://docs.smarthealthit.org)"
       })
+
+      
+
       CapabilityStatement.rest[0].security.extension.push({
-        "url": "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris",
-        "extension": [{
-          "url": "token",
-          "valueUri": Meteor.absoluteUrl() + "oauth/token"
-        }, {
-          "url": "authorize",
-          "valueUri": Meteor.absoluteUrl() + "oauth"
-        }]
+        "extension": [
+          {
+            "url": "token",
+            "valueUri": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.tokenEndpoint', "oauth/token") 
+          },
+          {
+            "url": "authorize",
+            "valueUri": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.authorizationEndpoint', "oauth/authorize") 
+          },
+          {
+            "url": "register",
+            "valueUri": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.registrationEndpoint', "oauth/registration") 
+          },
+          {
+            "url": "manage",
+            "valueUri": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.manageEndpoint', "authorizations/manage")
+          },
+          {
+            "url": "introspect",
+            "valueUri": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.introspectEndpoint', "authorizations/introspect")
+          },
+          {
+            "url": "revoke",
+            "valueUri": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.revokeEndpoint', "authorizations/revoke")
+          }
+        ],
+        "url": "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris"
       })
     }
     
@@ -107,6 +140,29 @@ const Server = {
       })      
     }
     return CapabilityStatement;
+  },
+  getWellKnownSmartConfiguration: function(){
+    let response = {
+      "resourceType": "Basic",
+      
+      // required fields
+      "authorization_endpoint": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.authorizationEndpoint', "oauth/authorize"),
+      "token_endpoint":  Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.tokenEndpoint', "oauth/token") ,
+      "capabilities": "http://localhost:3000/",
+
+      // optional fields
+      "scopes_supported": "",
+      "response_types_supported": "",
+      "management_endpoint": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.revokeEndpoint', "authorizations/manage"),
+      "introspection_endpoint": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.revokeEndpoint', "authorizations/introspect"),
+      "registration_endpoint": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.registrationEndpoint', "oauth/registration"),
+      "revocation_endpoint": Meteor.absoluteUrl() + get(Meteor, 'settings.private.fhir.security.revokeEndpoint', "authorizations/revoke"),
+
+      // custom fields
+      "message": "smart config!"
+    }
+
+    return response;
   }
 }
 
@@ -132,7 +188,101 @@ Meteor.startup(function() {
    
     JsonRoutes.sendResult(res, returnPayload);
   });
+
+  JsonRoutes.add("get", "/metadata", function (req, res, next) {
+    console.log('GET ' + '/metadata');
+
+    res.setHeader('Content-type', 'application/json');
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    let returnPayload = {
+      code: 200,
+      data: Server.getCapabilityStatement()
+    }
+    if(process.env.TRACE){
+      console.log('return payload', returnPayload);
+    }
+   
+    JsonRoutes.sendResult(res, returnPayload);
+  });
+
+
+  JsonRoutes.add("get", "/.well-known/smart-configuration", function (req, res, next) {
+    console.log('GET ' + '/.well-known/smart-configuration');
+
+    res.setHeader('Content-type', 'application/json');
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    let returnPayload = {
+      code: 200,
+      data: Server.getWellKnownSmartConfiguration()
+    }
+    if(process.env.TRACE){
+      console.log('return payload', returnPayload);
+    }
+   
+    JsonRoutes.sendResult(res, returnPayload);
+  });
+
+  JsonRoutes.add("post", "/oauth/registration", function (req, res, next) {
+    console.log('POST ' + '/oauth/registration');
+
+    res.setHeader('Content-type', 'application/json');
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    let returnPayload = {
+      code: 201,
+      data: {
+        "message": 'registration',
+        "client_id": Random.id(),
+        "scope": "launch%2Fpatient%20patient%2FObservation.rs%20patient%2FPatient.rs%20offline_access&"
+      }
+    }
+    if(process.env.TRACE){
+      console.log('return payload', returnPayload);
+    }
+   
+    JsonRoutes.sendResult(res, returnPayload);
+  });
+  JsonRoutes.add("get", "/oauth/token", function (req, res, next) {
+    console.log('GET ' + '/oauth/token');
+
+    res.setHeader('Content-type', 'application/json');
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    let returnPayload = {
+      code: 200,
+      data: {
+        "message": 'token'
+      }
+    }
+    if(process.env.TRACE){
+      console.log('return payload', returnPayload);
+    }
+   
+    JsonRoutes.sendResult(res, returnPayload);
+  });
+  JsonRoutes.add("get", "/oauth/authenticate", function (req, res, next) {
+    console.log('GET ' + '/oauth/authenticate');
+
+    res.setHeader('Content-type', 'application/json');
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    let returnPayload = {
+      code: 200,
+      data: {
+        "message": 'authenticate'
+      }
+    }
+    if(process.env.TRACE){
+      console.log('return payload', returnPayload);
+    }
+   
+    JsonRoutes.sendResult(res, returnPayload);
+  });
 });
+
+
 
 
 Meteor.methods({

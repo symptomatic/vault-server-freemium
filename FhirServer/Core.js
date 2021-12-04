@@ -2,7 +2,7 @@
 import RestHelpers from './RestHelpers';
 import MedicalRecordImporter from './MedicalRecordImporter';
 
-import { get, has, set, unset, cloneDeep } from 'lodash';
+import { get, has, set, unset, cloneDeep, isEmpty } from 'lodash';
 import moment from 'moment';
 import { Meteor } from 'meteor/meteor';
 import { Random } from 'meteor/random';
@@ -133,9 +133,9 @@ if(typeof oAuth2Server === 'object'){
   console.log("Using the Freemium version of the Vault Server.  OAuth server not installed.  Please contact inquiries@symptomatic.io to purchase a license for our professional version.")
 }
 
-JsonRoutes.setResponseHeaders({
-  "content-type": "application/fhir+json"
-});
+// JsonRoutes.setResponseHeaders({
+//   "Content-Type": "application/fhir+json"
+// });
 
 
 //==========================================================================================
@@ -155,7 +155,8 @@ JsonRoutes.sendResult = function (res, options) {
     let shouldPrettyPrint = (process.env.NODE_ENV === 'development');
     let spacer = shouldPrettyPrint ? 2 : null;
     // res.setHeader('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization, Content-Length, X-Requested-With');
-    res.setHeader('Content-type', 'application/fhir+json');
+    // res.setHeader('Content-Type', 'application/fhir+json');
+    // res.setHeader('Content-type', 'application/fhir+json');
     // res.setHeader('Access-Control-Allow-Origin', "*");
     res.setHeader("Access-Control-Allow-Methods", "PUT, POST, GET, DELETE, PATCH, OPTIONS");
     res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -191,6 +192,7 @@ JsonRoutes.add("post", fhirPath + "/ping", function (req, res, next) {
 
   res.setHeader('Content-type', 'application/json');
   res.setHeader("Access-Control-Allow-Methods", "PUT, POST, GET, DELETE, PATCH, OPTIONS");
+  res.setHeader('Content-Type', 'application/fhir+json');
 
   let returnPayload = {
     code: 200,
@@ -243,6 +245,7 @@ if(typeof serverRouteManifest === "object"){
   
           // res.setHeader("Access-Control-Allow-Origin", "*");          
           // res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader('Content-Type', 'application/fhir+json');
 
           let isAuthorized = false;
 
@@ -260,7 +263,7 @@ if(typeof serverRouteManifest === "object"){
             }
           } 
 
-          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
+          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth') || get(Meteor, 'settings.private.fhir.rest.' + routeResourceType + '.disableOauth')) {
 
             let databaseQuery = RestHelpers.generateMongoSearchQuery(req.query, routeResourceType);
 
@@ -309,6 +312,8 @@ if(typeof serverRouteManifest === "object"){
           // res.setHeader("Access-Control-Max-Age", "1800");
           // res.setHeader("Access-Control-Allow-Methods","PUT, POST, GET, DELETE, PATCH, OPTIONS");
   
+          res.setHeader('Content-Type', 'application/fhir+json');
+
           let isAuthorized = false;
           let accessTokenStr = (req.params && req.params.access_token) || (req.query && req.query.access_token);
           if(typeof oAuth2Server === 'object'){
@@ -324,7 +329,7 @@ if(typeof serverRouteManifest === "object"){
             }
           }
   
-          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
+          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth') || get(Meteor, 'settings.private.fhir.rest.' + routeResourceType + '.disableOauth')) {
             if(get(Meteor, 'settings.private.debug') === true) { console.log('Security checks completed'); }
 
             let record;
@@ -392,6 +397,8 @@ if(typeof serverRouteManifest === "object"){
           // res.setHeader("Access-Control-Max-Age", "1800");
           // res.setHeader("Access-Control-Allow-Methods","PUT, POST, GET, DELETE, PATCH, OPTIONS");
 
+        res.setHeader('Content-Type', 'application/fhir+json');
+
         let accessTokenStr = get(req, 'params.access_token') || get(req, 'params.access_token');
 
         let isAuthorized = false;
@@ -405,7 +412,7 @@ if(typeof serverRouteManifest === "object"){
           }
         }
 
-        if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
+        if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth') || get(Meteor, 'settings.private.fhir.rest.' + routeResourceType + '.disableOauth')) {
 
         //------------------------------------------------------------------------------------------------
 
@@ -469,11 +476,12 @@ if(typeof serverRouteManifest === "object"){
                     }
                     if (result) {
                       if(get(Meteor, 'settings.private.trace') === true) { console.log('result', result); }
-                      res.setHeader("MeasureReport", fhirPath + "/MeasureReport/" + result);
+                      // res.setHeader("MeasureReport", fhirPath + "/MeasureReport/" + result);
                       res.setHeader("Last-Modified", new Date());
                       res.setHeader("ETag", fhirVersion);
                       res.setHeader("Location", "/MeasureReport/" + result);
-  
+                      res.setHeader('Content-Type', 'application/fhir+json');
+
                       let resourceRecords = Collections[collectionName].find({id: newlyAssignedId});
                       let payload = [];
   
@@ -536,12 +544,20 @@ if(typeof serverRouteManifest === "object"){
             }
           }
         
-          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
-      
-            if (req.body) {
-              let newRecord = cloneDeep(req.body);
-      
-              if(get(Meteor, 'settings.private.trace') === true) { console.log('req.body', req.body); }
+          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth') || get(Meteor, 'settings.private.fhir.rest.' + routeResourceType + '.disableOauth')) {
+
+            let newRecord;
+            
+            if(req.body){
+              newRecord = cloneDeep(req.body);      
+            } else if (isEmpty(req.body)){
+              newRecord = JSON.parse(req._readableState.buffer.toString('utf8'));
+            }
+            
+            if (newRecord) {
+              if(get(Meteor, 'settings.private.debug') === true) { console.log('req.body', req.body); }
+              if(get(Meteor, 'settings.private.debug') === true) { console.log('newRecord', newRecord); }
+
       
               newRecord.resourceType = routeResourceType;
               newRecord = RestHelpers.toMongo(newRecord);
@@ -582,9 +598,10 @@ if(typeof serverRouteManifest === "object"){
                       }
                       if (result) {
                         if(get(Meteor, 'settings.private.trace') === true) { console.log('result', result); }
-                        res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
+                        // res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
                         res.setHeader("Last-Modified", new Date());
                         res.setHeader("ETag", fhirVersion);
+                        res.setHeader('Content-Type', 'application/fhir+json');
           
                         let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
                         let payload = [];
@@ -616,9 +633,10 @@ if(typeof serverRouteManifest === "object"){
                       }
                       if (result) {
                         if(get(Meteor, 'settings.private.trace') === true) { console.log('result', result); }
-                        res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
+                        // res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
                         res.setHeader("Last-Modified", new Date());
                         res.setHeader("ETag", fhirVersion);
+                        res.setHeader('Content-Type', 'application/fhir+json');
           
                         let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
                         let payload = [];
@@ -661,44 +679,51 @@ if(typeof serverRouteManifest === "object"){
                     set(newRecord, 'meta.versionId', 1)
                   }
   
-                  if(get(Meteor, 'settings.private.debug') === true) { console.log('Core.put().Collections.findOne()', Collections[collectionName].findOne({_id: newRecord._id}));             }
+                  if(get(Meteor, 'settings.private.debug') === true) { console.log('Core.put().Collections.findOne()', Collections[collectionName].findOne({id: req.params.id}));             }
   
-                  if(!Collections[collectionName].findOne({_id: newRecord._id})){
-                    newlyAssignedId = Collections[collectionName].insert(newRecord, schemaValidationConfig, function(error, result){
-                      if (error) {
-                        if(get(Meteor, 'settings.private.trace') === true) { console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error); }
-          
-                        // Bad Request
-                        JsonRoutes.sendResult(res, {
-                          code: 400,
-                          data: error.message
-                        });
-                      }
-                      if (result) {
-                        if(get(Meteor, 'settings.private.trace') === true) { console.log('result', result); }
-                        res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
-                        res.setHeader("Last-Modified", new Date());
-                        res.setHeader("ETag", fhirVersion);
-          
-                        let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
-                        let payload = [];
-          
-                        recordsToUpdate.forEach(function(record){
-                          payload.push(RestHelpers.prepForFhirTransfer(record));
-                        });
-          
-                        if(get(Meteor, 'settings.private.trace') === true) { console.log("payload", payload); }
-          
-                        // Created!
-                        JsonRoutes.sendResult(res, {
-                          code: 201,
-                          data: Bundle.generate(payload)
-                        });
-                      }
-                    });    
+                  if(!Collections[collectionName].findOne({id: req.params.id})){
+                    if(newRecord){
+                      newlyAssignedId = Collections[collectionName].insert(newRecord, schemaValidationConfig, function(error, result){
+                        if (error) {
+                          if(get(Meteor, 'settings.private.trace') === true) { console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error); }
+            
+                          // Bad Request
+                          JsonRoutes.sendResult(res, {
+                            code: 400,
+                            data: error.message
+                          });
+                        }
+                        if (result) {
+                          if(get(Meteor, 'settings.private.trace') === true) { console.log('result', result); }
+                          // res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
+                          res.setHeader("Last-Modified", new Date());
+                          res.setHeader("ETag", fhirVersion);
+                          res.setHeader("Content-Type", "application/fhir+json;charset=utf-8");
+            
+                          let record = Collections[collectionName].findOne({id: req.params.id});
+                          let payload = [];
+           
+                          if(record){
+                            delete record._document;
+                            if(get(Meteor, 'settings.private.trace') === true) { console.log("record", record); }
+              
+                            // Created!
+                            JsonRoutes.sendResult(res, {
+                              code: 201,
+                              data: record
+                            });
+                          } else {
+                            // no body; Unprocessable Entity
+                            JsonRoutes.sendResult(res, {
+                              code: 422
+                            });
+                          }                        
+                        }
+                      });      
+                    }
                   } else {
                     
-                    Collections[collectionName].update({_id: newRecord._id}, {$set: newRecord}, schemaValidationConfig, function(error, result){
+                    Collections[collectionName].update({id: newRecord.id}, {$set: newRecord}, schemaValidationConfig, function(error, result){
                       if (error) {
                         if(get(Meteor, 'settings.private.trace') === true) { console.log('PUT /fhir/' + routeResourceType + '/' + req.params.id + "[error]", error); }
           
@@ -710,11 +735,12 @@ if(typeof serverRouteManifest === "object"){
                       }
                       if (result) {
                         if(get(Meteor, 'settings.private.trace') === true) { console.log('result', result); }
-                        res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
+                        // res.setHeader("MeasureReport", fhirPath + "/" + routeResourceType + "/" + result);
                         res.setHeader("Last-Modified", new Date());
                         res.setHeader("ETag", fhirVersion);
+                        res.setHeader('Content-Type', 'application/fhir+json');
           
-                        let recordsToUpdate = Collections[collectionName].find({_id: req.params.id});
+                        let recordsToUpdate = Collections[collectionName].find({id: req.params.id});
                         let payload = [];
           
                         recordsToUpdate.forEach(function(record){
@@ -784,8 +810,8 @@ if(typeof serverRouteManifest === "object"){
             }
           }
 
-          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
-            if (Collections[collectionName].find({_id: req.params.id}).count() === 0) {
+          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth') || get(Meteor, 'settings.private.fhir.rest.' + routeResourceType + '.disableOauth')) {
+            if (Collections[collectionName].find({id: req.params.id}).count() === 0) {
               // Not Found
               JsonRoutes.sendResult(res, {
                 code: 404
@@ -801,7 +827,7 @@ if(typeof serverRouteManifest === "object"){
               //   code: 410
               // });
             } else {
-              Collections[collectionName].remove({_id: req.params.id}, function(error, result){
+              Collections[collectionName].remove({id: req.params.id}, function(error, result){
                 if (result) {
                   // No Content
                   JsonRoutes.sendResult(res, {
@@ -858,7 +884,7 @@ if(typeof serverRouteManifest === "object"){
             }
           }
 
-          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
+          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth') || get(Meteor, 'settings.private.fhir.rest.' + routeResourceType + '.disableOauth')) {
             let resourceRecords = [];
 
             if (req.params.param.includes('_search')) {
@@ -917,7 +943,7 @@ if(typeof serverRouteManifest === "object"){
             }
           }
 
-          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth')) {
+          if (isAuthorized || process.env.NOAUTH || get(Meteor, 'settings.private.fhir.disableOauth') || get(Meteor, 'settings.private.fhir.rest.' + routeResourceType + '.disableOauth')) {
 
             let resourceRecords = [];
 
