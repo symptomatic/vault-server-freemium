@@ -202,48 +202,49 @@ export const RestHelpers = {
     prepForUpdate: function (record) {
       process.env.TRACE && console.log("RestHelpers.prepForUpdate()");  
     
-      if (Array.isArray(record.name)) {
-        //console.log("record.name", record.name);    
-        record.name.forEach(function(name){
-          name.resourceType = "HumanName";
-        });
-      }
+      // if (Array.isArray(record.name)) {
+      //   //console.log("record.name", record.name);    
+      //   record.name.forEach(function(name){
+      //     name.resourceType = "HumanName";
+      //   });
+      // }
     
-      if (Array.isArray(record.telecom)) {
-        //console.log("record.telecom", record.telecom);
-        record.telecom.forEach(function(telecom){
-          telecom.resourceType = "ContactPoint";
-        });
-      }
+      // if (Array.isArray(record.telecom)) {
+      //   //console.log("record.telecom", record.telecom);
+      //   record.telecom.forEach(function(telecom){
+      //     telecom.resourceType = "ContactPoint";
+      //   });
+      // }
     
-      if (Array.isArray(record.address)) {
-        //console.log("record.address", record.address);
-        record.address.forEach(function(address){
-          address.resourceType = "Address";
-        });
-      }
+      // if (Array.isArray(record.address)) {
+      //   //console.log("record.address", record.address);
+      //   record.address.forEach(function(address){
+      //     address.resourceType = "Address";
+      //   });
+      // }
     
-      if (Array.isArray(record.contact)) {
-        //console.log("record.contact", record.contact);
-        record.contact.forEach(function(contact){
-          if (contact.name) {
-            contact.name.resourceType = "HumanName";
-          }
+      // if (Array.isArray(record.contact)) {
+      //   //console.log("record.contact", record.contact);
+      //   record.contact.forEach(function(contact){
+      //     if (contact.name) {
+      //       contact.name.resourceType = "HumanName";
+      //     }
     
-          if (contact.telecom && contact.telecom[0]) {
-            contact.telecom.forEach(function(telecom){
-              telecom.resourceType = "ContactPoint";
-            });
-          }
+      //     if (contact.telecom && contact.telecom[0]) {
+      //       contact.telecom.forEach(function(telecom){
+      //         telecom.resourceType = "ContactPoint";
+      //       });
+      //     }
     
-        });
-      }
+      //   });
+      // }
 
       if(get(record, 'meta')){
         record.meta.lastUpdated = new Date();
       } else {
         record.meta = {
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
+          versionId: "1"
         }
       }
     
@@ -315,6 +316,14 @@ export const RestHelpers = {
             contact.telecom.forEach(function(telecom){
               delete telecom.resourceType;
             });
+          }
+
+          if (Array.isArray(contact.address)) {
+            contact.address.forEach(function(address){
+              delete address.resourceType;
+            });
+          } else {
+            delete contact.address.resourceType;
           }
 
         });
